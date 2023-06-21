@@ -1,0 +1,168 @@
+---
+title: "Populacija in GDP"
+author: "Rok Kuk"
+date: "`r Sys.Date()`"
+output: 
+    html_document: default
+    github_document: default
+---
+
+```{r setup, include=FALSE}
+figwidth <- 8
+figheight <- 7
+
+library(knitr)
+knit_hooks$set(optipng = hook_optipng)
+knitr::opts_chunk$set(
+  fig.align = 'center',
+  fig.width = figwidth / 2.54,
+  fig.height = figheight / 2.54,
+  fig.show = "hold",
+  dpi = 105
+)
+pdf.options(encoding='ISOLatin2.enc')
+```
+
+## Uvoz knjižnic
+
+```{r}
+library(tidyverse)
+library(cowplot)
+library(here)
+library(ggokabeito)
+library(colorspace)
+```
+
+## Uvoz podatkov
+
+```{r}
+hist <- read_csv(here("data", "WDI.csv")) %>%
+    filter(`Country Code` == "WLD")
+
+histgdp <- filter(hist, `Indicator Code` == "NY.GDP.MKTP.PP.KD") %>%
+    pivot_longer(cols=5:57, names_to="leto", values_to="value") %>%
+    select(leto, value) %>%
+    drop_na() %>%
+    slice(which(row_number() %% 5 == 1)) %>%
+    mutate(value = value / 1000000000) 
+
+histpop <- filter(hist, `Indicator Code` == "SP.POP.TOTL") %>%
+    pivot_longer(cols=5:57, names_to="leto", values_to="value") %>%
+    select(leto, value) %>%
+    slice(which(row_number() %% 5 == 1)) %>%
+    mutate(value = value / 1000000)
+
+rm(hist)
+
+base <- read_csv(here("data", "SspDb_compare_regions_2013-06-12.csv")) %>%
+    filter(REGION == "World") %>%
+    select(-REGION)
+
+IAM <- read_csv(here("data", "IAM/SSP_IAM_V2_201811.csv")) %>%
+    filter(REGION == "World") %>%
+    select(-REGION)
+```
+
+## Preoblikovanje podatkov za grafe
+
+```{r}
+populacija_proj <- filter(base, VARIABLE == "Population" & MODEL == "IIASA-WiC POP") %>%
+    select(-UNIT, -VARIABLE, -MODEL) %>%
+    pivot_longer(cols=2:42, names_to="leto", values_to="value") %>%
+    drop_na()
+populacija_proj$SCENARIO <- factor(populacija_proj$SCENARIO, levels=c("SSP1_v9_130115", "SSP2_v9_130115", "SSP3_v9_130115", "SSP4d_v9_130115", "SSP5_v9_130115")) %>%
+    fct_recode("SSP1" = "SSP1_v9_130115", 
+               "SSP2" = "SSP2_v9_130115", 
+               "SSP3" = "SSP3_v9_130115", 
+               "SSP4" = "SSP4d_v9_130115", 
+               "SSP5" = "SSP5_v9_130115")
+histpop$SCENARIO <- "preteklost"
+populacija <- full_join(histpop, populacija_proj) %>%
+    mutate(SCENARIO=fct_relevel(SCENARIO, c("preteklost", "SSP1", "SSP2", "SSP3", "SSP4", "SSP5")))
+populacija$leto <- as.integer(populacija$leto)
+
+GDP_proj <- filter(base, VARIABLE == "GDP|PPP" & MODEL == "OECD Env-Growth") %>%
+    select(-UNIT, -VARIABLE, -MODEL) %>%
+    pivot_longer(cols=2:42, names_to="leto", values_to="value") %>%
+    drop_na()
+    
+GDP_proj$SCENARIO <- factor(GDP_proj$SCENARIO, levels=c("SSP1_v9_130325", "SSP2_v9_130325", "SSP3_v9_130325", "SSP4_v9_130325", "SSP5_v9_130325")) %>%
+    fct_recode("SSP1" = "SSP1_v9_130325", 
+               "SSP2" = "SSP2_v9_130325", 
+               "SSP3" = "SSP3_v9_130325", 
+               "SSP4" = "SSP4_v9_130325", 
+               "SSP5" = "SSP5_v9_130325")
+histgdp$SCENARIO <- "preteklost"
+histgdp$leto <- as.integer(histgdp$leto)
+GDP_proj$leto <- as.integer(GDP_proj$leto)
+GDP <- full_join(histgdp, GDP_proj) %>%
+    mutate(SCENARIO=fct_relevel(SCENARIO, c("preteklost", "SSP1", "SSP2", "SSP3", "SSP4", "SSP5")))
+
+labels_pop <- full_join(filter(populacija, leto == 2100),
+                       tibble(
+                           SCENARIO = c("SSP1", "SSP2", "SSP3", "SSP4", "SSP5"),
+                           nudge_y = c(-0.1, -0.17, 0, 0.15, 0.1)))
+labels_gdp <- full_join(filter(GDP, leto == 2100),
+                        tibble(
+                          SCENARIO = c("SSP1", "SSP2", "SSP3", "SSP4", "SSP5"),
+                          nudge_y = c(7000, -17000, 0, 0, 0)))
+```
+
+## Grafi
+
+```{r}
+labelsize <- 7
+
+ggplot(data = populacija, mapping = aes(leto, value/1000, color=SCENARIO, group=SCENARIO)) +
+    geom_line(linewidth = 0.6) +
+    geom_text(
+        data = labels_pop,
+        aes(x = leto + 9, y = value/1000 + nudge_y, label = SCENARIO),
+        size = unit(labelsize*0.3, "pt")) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)), limits = c(0, 14), breaks = seq(0, 14, 2)) +
+    scale_x_continuous(breaks = seq(1960, 2100, 20)) +
+    xlab("leto") + 
+    ylab("milijard prebivalcev") +
+    labs(title = "Svetovno prebivalstvo", caption="GRAF: Rok Kuk\nVIR: Riahi et al. (2017), KC in Lutz (2017)\n  PODATKI: SSP Public Database (Version 2.0) / World Bank, World Development Indicators (dec 2012)") + 
+    theme_half_open() +
+    background_grid(major="y", size.major = 0.2) +
+    scale_color_manual(values=c("#000000", darken("#F0E442", 0.03), "#56B4E9", "#009E73", "#E69F00", "#0072B2")) +
+    theme(axis.text = element_text(size=labelsize),
+          axis.title = element_text(size=labelsize),
+          title = element_text(size=labelsize*1.5),
+          plot.caption = element_text(size=labelsize*0.6, color = "#666666", margin=margin(0,0,0,0)),
+          plot.background = element_rect(fill = "#FFFFFF")) +
+    annotate("point", x = 2010, y = 6.894378, colour = "#000000", size=1) +
+    guides(color="none")
+
+ggsave2(here("output", "pdf", "populacija.pdf"), width=figwidth, height=figheight, units="cm")
+ggsave2(here("output", "png", "populacija.png"), width=figwidth, height=figheight, units="cm", dpi=400)
+```
+
+```{r}
+ggplot(data = GDP, mapping = aes(leto, value, color=SCENARIO, group=SCENARIO)) +
+    geom_line(linewidth = 0.6) +
+    geom_text(
+        data = labels_gdp,
+        aes(x = leto + 9, y = value + nudge_y, label = SCENARIO),
+        size = unit(labelsize*0.3, "pt")) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)), limits = c(0, 1150*1000)) +
+    scale_x_continuous(breaks = seq(1960, 2100, 20)) +
+    xlab("leto") + 
+    ylab("milijard US$2005 / leto (PPP)") +
+    labs(title = "Svetovni BDP", caption="GRAF: Rok Kuk\nVIR: Riahi et al. (2017), Dellink et al. (2017)\n  PODATKI: SSP Public Database (Version 2.0) / World Bank, World Development Indicators (dec 2012)") + 
+    theme_half_open() +
+    background_grid(major="y", size.major=0.2) +
+    scale_color_manual(values=c("#000000", darken("#F0E442", 0.03), "#56B4E9", "#009E73", "#E69F00", "#0072B2")) +
+    theme(axis.text = element_text(size=labelsize),
+          axis.title = element_text(size=labelsize),
+          title = element_text(size=labelsize*1.5),
+          plot.caption = element_text(size=labelsize*0.6, color = "#666666", margin=margin(0,0,0,0)),
+          plot.background = element_rect(fill = "#FFFFFF")) +
+    annotate("point", x = 2010, y = 67.66640*1000, colour = "#000000", size=1) +
+    geom_line(data=histgdp, mapping=aes(leto, value)) +
+    guides(color="none")
+
+ggsave2(here("output", "pdf", "GDP.pdf"), width=figwidth, height=figheight, units="cm")
+ggsave2(here("output", "png", "GDP.png"), width=figwidth, height=figheight, units="cm", dpi=400)
+```
