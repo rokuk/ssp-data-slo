@@ -47,3 +47,13 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Other stuff
+druge-slike
+
+# Data folders
+SSP_IAM_V2_201811.csv
+SSP_IAM_V2_201811_meta.csv
+SSP_IAM_V2_201811_notes.csv
+SspDb_compare_regions_2013-06-12.csv
+WDI.csv

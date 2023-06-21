@@ -1,54 +1,81 @@
----
-title: "Klimatski podatki"
-author: "Rok Kuk"
-date: "`r Sys.Date()`"
-output: 
-    github_document: default
-    html_document: default
----
-
-```{r setup, include=FALSE}
-figwidth <- 16
-figheight <- 6
-
-library(knitr)
-knit_hooks$set(optipng = hook_optipng)
-knitr::opts_chunk$set(
-  fig.align = 'center',
-  fig.width = figwidth / 2.54,
-  fig.height = figheight / 2.54,
-  fig.show = "hold",
-  dpi = 105
-)
-
-options(encoding='UTF-8')
-pdf.options(encoding='ISOLatin2.enc')
-```
+Klimatski podatki
+================
+Rok Kuk
+2023-06-21
 
 ## Uvoz knjižnic
 
-```{r}
+``` r
 library(tidyverse)
+```
+
+    ## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+    ## ✔ dplyr     1.1.2     ✔ readr     2.1.4
+    ## ✔ forcats   1.0.0     ✔ stringr   1.5.0
+    ## ✔ ggplot2   3.4.2     ✔ tibble    3.2.1
+    ## ✔ lubridate 1.9.2     ✔ tidyr     1.3.0
+    ## ✔ purrr     1.0.1     
+    ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+    ## ✖ dplyr::filter() masks stats::filter()
+    ## ✖ dplyr::lag()    masks stats::lag()
+    ## ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+
+``` r
 library(cowplot)
+```
+
+    ## 
+    ## Attaching package: 'cowplot'
+    ## 
+    ## The following object is masked from 'package:lubridate':
+    ## 
+    ##     stamp
+
+``` r
 library(here)
+```
+
+    ## here() starts at /Users/rokuk/Documents/Work/BFUL/SSP-data-slo
+
+``` r
 library(ggokabeito)
 library(colorspace)
 library(ggplot2)
 library(scales)
 ```
 
+    ## 
+    ## Attaching package: 'scales'
+    ## 
+    ## The following object is masked from 'package:purrr':
+    ## 
+    ##     discard
+    ## 
+    ## The following object is masked from 'package:readr':
+    ## 
+    ##     col_factor
+
 ## Uvoz podatkov
 
-```{r}
+``` r
 iam <- read_csv(here("data", "IAM", "SSP_IAM_V2_201811.csv")) %>%
     filter(REGION == "World") %>%
     mutate(SSP = str_sub(SCENARIO, 1, 4),
            MITIGATION = str_sub(SCENARIO, 6))
 ```
 
+    ## Rows: 84353 Columns: 16
+    ## ── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## chr  (5): MODEL, SCENARIO, REGION, VARIABLE, UNIT
+    ## dbl (11): 2005, 2010, 2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
 ## Cleanup
 
-```{r}
+``` r
 ssp1 <- filter(iam, SSP == "SSP1" & MODEL == "IMAGE")
 ssp2 <- filter(iam, SSP == "SSP2" & MODEL == "MESSAGE-GLOBIOM")
 ssp3 <- filter(iam, SSP == "SSP3" & MODEL == "AIM/CGE")
@@ -113,7 +140,11 @@ labels_emissions <- full_join(filter(co2emissions, leto == 2100 & MITIGATION == 
                        tibble(
                            SCENARIO = baseline_scenarios,
                            nudge_y = c(0, -4, 4, 0, 0)))
+```
 
+    ## Joining with `by = join_by(SCENARIO)`
+
+``` r
 labels_emissions$SCENARIO <- factor(labels_emissions$SCENARIO, levels=baseline_scenarios) %>%
     fct_recode("SSP1"="SSP1-Baseline", 
                "SSP2"="SSP2-Baseline", 
@@ -125,7 +156,11 @@ labels_temps <- full_join(filter(temps, leto == 2100 & MITIGATION == "izhodišč
                        tibble(
                            SCENARIO = baseline_scenarios,
                            nudge_y = c(0, -0.15, 0.2, 0.17, 0)))
+```
 
+    ## Joining with `by = join_by(SCENARIO)`
+
+``` r
 labels_temps$SCENARIO <- factor(labels_temps$SCENARIO, levels=baseline_scenarios) %>%
     fct_recode("SSP1"="SSP1-Baseline", 
                "SSP2"="SSP2-Baseline", 
@@ -138,7 +173,7 @@ labels_temps$SCENARIO <- factor(labels_temps$SCENARIO, levels=baseline_scenarios
 
 ### Emisije CO2
 
-```{r   fig.width = 8 / 2.54, fig.height = 7 / 2.54}
+``` r
 labelsize <- 7
 
 ggplot(data = filter(co2emissions, MITIGATION == "izhodišče"), mapping = aes(x = leto, y = izpusti / 1000, color = SSP)) +
@@ -170,12 +205,14 @@ ggplot(data = filter(co2emissions, MITIGATION == "izhodišče"), mapping = aes(x
     guides(color="none")
 ```
 
-```{r}
+<img src="klima_files/figure-gfm/unnamed-chunk-4-1.png" style="display: block; margin: auto;" />
+
+``` r
 ggsave2(here("output", "pdf", "izpustico2-baseline_all.pdf"), width=8, height=7, units="cm")
 ggsave2(here("output", "png", "izpustico2-baseline_all.png"), width=8, height=7, units="cm", dpi=400)
 ```
 
-```{r   fig.width = 8 / 2.54, fig.height = 7 / 2.54}
+``` r
 labelsize <- 7
 
 ggplot(data = filter(co2emissions, MITIGATION == "izhodišče"), mapping = aes(x = leto, y = izpusti / 1000, color = SSP)) +
@@ -206,12 +243,14 @@ ggplot(data = filter(co2emissions, MITIGATION == "izhodišče"), mapping = aes(x
     guides(color="none")
 ```
 
-```{r}
+<img src="klima_files/figure-gfm/unnamed-chunk-6-1.png" style="display: block; margin: auto;" />
+
+``` r
 ggsave2(here("output", "pdf", "izpustico2-baseline.pdf"), width=8, height=7, units="cm")
 ggsave2(here("output", "png", "izpustico2-baseline.png"), width=8, height=7, units="cm", dpi=400)
 ```
 
-```{r}
+``` r
 ggplot(data = co2emissions, mapping = aes(x = leto, y = izpusti / 1000, color = MITIGATION)) +
     geom_line() +
     facet_grid(cols = vars(SSP)) +
@@ -235,12 +274,14 @@ ggplot(data = co2emissions, mapping = aes(x = leto, y = izpusti / 1000, color = 
     guides(color = guide_legend(keyheight = 0.5)) 
 ```
 
-```{r}
+<img src="klima_files/figure-gfm/unnamed-chunk-8-1.png" style="display: block; margin: auto;" />
+
+``` r
 ggsave2(here("output", "pdf", "izpustico2.pdf"), width=figwidth, height=figheight, units="cm")
 ggsave2(here("output", "png", "izpustico2.png"), width=figwidth, height=figheight, units="cm", dpi=400)
 ```
 
-```{r}
+``` r
 ggplot(data = co2emissions, mapping = aes(x = leto, y = izpusti / 1000, color = SSP)) +
     geom_line() +
     facet_grid(cols = vars(fct_rev(MITIGATION))) +
@@ -264,14 +305,16 @@ ggplot(data = co2emissions, mapping = aes(x = leto, y = izpusti / 1000, color = 
     guides(color = guide_legend(keyheight = 1.2))
 ```
 
-```{r}
+<img src="klima_files/figure-gfm/unnamed-chunk-10-1.png" style="display: block; margin: auto;" />
+
+``` r
 ggsave2(here("output", "pdf", "izpustico2_2.pdf"), width=figwidth, height=figheight, units="cm")
 ggsave2(here("output", "png", "izpustico2_2.png"), width=figwidth, height=figheight, units="cm", dpi=400)
 ```
 
 ### Temperatura
 
-```{r   fig.width = 8 / 2.54, fig.height = 7 / 2.54}
+``` r
 ggplot(data = filter(temps, MITIGATION=="izhodišče"), mapping = aes(x = leto, y = temps, color = SSP)) +
     geom_line() + 
     geom_text(
@@ -301,12 +344,14 @@ ggplot(data = filter(temps, MITIGATION=="izhodišče"), mapping = aes(x = leto, 
     guides(color = "none") 
 ```
 
-```{r}
+<img src="klima_files/figure-gfm/unnamed-chunk-12-1.png" style="display: block; margin: auto;" />
+
+``` r
 ggsave2(here("output", "pdf", "temp-baseline_all.pdf"), width=8, height=7, units="cm")
 ggsave2(here("output", "png", "temp-baseline_all.png"), width=8, height=7, units="cm", dpi=400)
 ```
 
-```{r   fig.width = 8 / 2.54, fig.height = 7 / 2.54}
+``` r
 ggplot(data = filter(temps, MITIGATION=="izhodišče"), mapping = aes(x = leto, y = temps, color = SSP)) +
     geom_line() + 
     geom_text(
@@ -335,12 +380,14 @@ ggplot(data = filter(temps, MITIGATION=="izhodišče"), mapping = aes(x = leto, 
     guides(color = "none") 
 ```
 
-```{r}
+<img src="klima_files/figure-gfm/unnamed-chunk-14-1.png" style="display: block; margin: auto;" />
+
+``` r
 ggsave2(here("output", "pdf", "temp-baseline.pdf"), width=8, height=7, units="cm")
 ggsave2(here("output", "png", "temp-baseline.png"), width=8, height=7, units="cm", dpi=400)
 ```
 
-```{r}
+``` r
 ggplot(data = temps, mapping = aes(x = leto, y = temps, color = MITIGATION)) +
     geom_line() +
     facet_grid(cols = vars(SSP)) +
@@ -365,12 +412,14 @@ ggplot(data = temps, mapping = aes(x = leto, y = temps, color = MITIGATION)) +
     guides(color = guide_legend(keyheight = 0.5))
 ```
 
-```{r}
+<img src="klima_files/figure-gfm/unnamed-chunk-16-1.png" style="display: block; margin: auto;" />
+
+``` r
 ggsave2(here("output", "pdf", "temp.pdf"), width=figwidth, height=figheight, units="cm")
 ggsave2(here("output", "png", "temp.png"), width=figwidth, height=figheight, units="cm", dpi=400)
 ```
 
-```{r}
+``` r
 ggplot(data = temps, mapping = aes(x = leto, y = temps, color = SSP)) +
     geom_line() +
     facet_grid(cols = vars(fct_rev(MITIGATION))) +
@@ -395,14 +444,16 @@ ggplot(data = temps, mapping = aes(x = leto, y = temps, color = SSP)) +
     guides(color = guide_legend(keyheight = 1.2))
 ```
 
-```{r}
+<img src="klima_files/figure-gfm/unnamed-chunk-18-1.png" style="display: block; margin: auto;" />
+
+``` r
 ggsave2(here("output", "pdf", "temp_2.pdf"), width=figwidth, height=figheight, units="cm")
 ggsave2(here("output", "png", "temp_2.png"), width=figwidth, height=figheight, units="cm", dpi=400)
 ```
 
 ## Energija
 
-```{r fig.width=16/2.54, fig.height=6/2.54}
+``` r
 ggplot(data = energybaseline, mapping = aes(x = leto, y = energija, fill = fct_rev(VARIABLE))) +
     geom_area() +
     facet_grid(cols = vars(SSP)) +
@@ -428,12 +479,17 @@ ggplot(data = energybaseline, mapping = aes(x = leto, y = energija, fill = fct_r
     guides(color = guide_legend(keyheight = 0.5))
 ```
 
-```{r}
+    ## Scale for y is already present.
+    ## Adding another scale for y, which will replace the existing scale.
+
+<img src="klima_files/figure-gfm/unnamed-chunk-20-1.png" style="display: block; margin: auto;" />
+
+``` r
 ggsave2(here("output", "pdf", "energija-baseline.pdf"), width=16, height=6, units="cm")
 ggsave2(here("output", "png", "energija-baseline.png"), width=16, height=6, units="cm", dpi=400)
 ```
 
-```{r fig.width = 16 / 2.54, fig.height = 25 / 2.54}
+``` r
 ggplot(data = energy, mapping = aes(x = leto, y = energija, fill = fct_rev(VARIABLE))) +
     geom_area() +
     facet_grid(cols = vars(SSP), rows = vars(MITIGATION)) +
@@ -459,7 +515,12 @@ ggplot(data = energy, mapping = aes(x = leto, y = energija, fill = fct_rev(VARIA
     guides(color = guide_legend(keyheight = 0.5))
 ```
 
-```{r}
+    ## Scale for y is already present.
+    ## Adding another scale for y, which will replace the existing scale.
+
+<img src="klima_files/figure-gfm/unnamed-chunk-22-1.png" style="display: block; margin: auto;" />
+
+``` r
 ggsave2(here("output", "pdf", "energija-mitigation.pdf"), width=16, height=25, units="cm")
 ggsave2(here("output", "png", "energija-mitigation.png"), width=16, height=25, units="cm", dpi=400)
 ```
